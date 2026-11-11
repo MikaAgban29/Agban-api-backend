@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#fff6f0" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#190d17" media="(prefers-color-scheme: dark)">
+  <title>Lab Roll Call · Attendance Management Portal</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23c2410c'/%3E%3Cstop offset='1' stop-color='%23be185d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='10' fill='url(%23g)'/%3E%3Cpath d='m9 16.5 4.5 4.5L23 11.5' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <script>
+    /* Apply the saved (or device) theme before the page paints, so it never flashes the wrong colours. */
+    try {
+      var t = localStorage.getItem('theme');
+      if (t !== 'dark' && t !== 'light') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.theme = t;
+    } catch (e) { document.documentElement.dataset.theme = 'light'; }
+  </script>
+  <style>
+    /* "Sunset": soft gradient backdrop, glass top bar, big rounded cards. Light and dark themes, switchable. */
+    :root {
+      --bg:#fff6f0; --blob1:rgba(251,146,60,.34); --blob2:rgba(244,114,182,.24); --blob3:rgba(250,204,21,.22);
+      --surface:#fff; --surface-2:#fff7f1; --glass:rgba(255,255,255,.76); --line:#f6e1d3; --line-2:#ecc9b2;
+      --text:#2d1430; --muted:#6a4a67; --subtle:#78587a;
+      --brand:#c2410c; --brand-ink:#9a3412; --grad:linear-gradient(135deg, #c2410c, #be185d);
+      --grad-text:linear-gradient(135deg, #451a03 10%, #c2410c 55%, #be185d);
+      --ok:#047857; --ok-soft:#e5f8ee; --ok-line:#b3ead0; --ok-solid:#10b981;
+      --warn:#b45309; --warn-soft:#fff4dc; --warn-line:#f6dc9a; --warn-solid:#f59e0b;
+      --bad:#be123c; --bad-soft:#ffe8ee; --bad-line:#f9bfce; --bad-solid:#f43f5e;
+      --toast-bg:#2d1430; --toast-fg:#fff;
+      --shadow-sm:0 1px 2px rgba(45,20,48,.06);
+      --shadow:0 1px 2px rgba(45,20,48,.05), 0 18px 36px -20px rgba(194,65,12,.38);
+      --shadow-pop:0 24px 50px -18px rgba(45,20,48,.45), 0 2px 10px rgba(45,20,48,.1);
+      --ring:0 0 0 3px rgba(194,65,12,.3);
+    }
+    :root[data-theme=dark] {
+      --bg:#190d17; --blob1:rgba(234,88,12,.30); --blob2:rgba(219,39,119,.20); --blob3:rgba(245,158,11,.14);
+      --surface:#26141f; --surface-2:#1f101a; --glass:rgba(31,16,26,.72); --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.17);
+      --text:#fff1ea; --muted:#dcb8c4; --subtle:#c19ba9;
+      --brand:#fb923c; --brand-ink:#fdba74;
+      --grad-text:linear-gradient(135deg, #ffffff 10%, #fed7aa 55%, #fbcfe8);
+      --ok:#6ee7b7; --ok-soft:rgba(16,185,129,.15); --ok-line:rgba(52,211,153,.35);
+      --warn:#fcd34d; --warn-soft:rgba(245,158,11,.14); --warn-line:rgba(251,191,36,.35);
+      --bad:#fda4af; --bad-soft:rgba(244,63,94,.14); --bad-line:rgba(251,113,133,.38);
+      --toast-bg:#fff1ea; --toast-fg:#2d1430;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 18px 36px -20px rgba(0,0,0,.7);
+      --shadow-pop:0 28px 60px -20px rgba(0,0,0,.85), 0 2px 10px rgba(0,0,0,.5);
+      --ring:0 0 0 3px rgba(251,146,60,.45);
+    }
+
+    *, *::before, *::after { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    .swap *, .swap *::before, .swap *::after { transition:none !important; } /* no colour fades while the theme flips */
+    html { -webkit-text-size-adjust:100%; }
+    body {
+      margin:0; min-height:100vh; color:var(--text); background:var(--bg); -webkit-font-smoothing:antialiased;
+      font:16px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .bg {
+      position:fixed; inset:0; z-index:-1; pointer-events:none;
+      background:radial-gradient(60vmax 40vmax at 8% -8%, var(--blob1), transparent 60%),
+                 radial-gradient(50vmax 38vmax at 100% 0%, var(--blob2), transparent 60%),
+                 radial-gradient(60vmax 46vmax at 55% 112%, var(--blob3), transparent 60%);
+    }
+    h1, h2, p { margin:0; }
+    button, input, select { font:inherit; color:inherit; }
+    .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+    .icon { width:18px; height:18px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .wrap { max-width:1180px; margin:0 auto; padding:0 20px; }
+
+    /* ---- floating top bar ---- */
+    .navwrap { position:sticky; top:0; z-index:40; padding:12px 12px 0; }
+    .nav {
+      display:flex; align-items:center; gap:10px; max-width:1180px; margin:0 auto; padding:10px 12px 10px 14px; border:1px solid var(--line); border-radius:22px;
+      background:var(--glass); box-shadow:var(--shadow-sm); -webkit-backdrop-filter:blur(16px) saturate(160%); backdrop-filter:blur(16px) saturate(160%);
+    }
+    .brand { display:flex; align-items:center; gap:10px; font-size:1.05rem; font-weight:800; letter-spacing:-.02em; }
+    .logo { display:grid; place-items:center; width:38px; height:38px; border-radius:13px; color:#fff; background:var(--grad); box-shadow:0 10px 22px -10px rgba(194,65,12,.85); }
+    .nav-actions { display:flex; align-items:center; gap:8px; margin-left:auto; }
+    .status { display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--muted); font-size:.8rem; font-weight:700; white-space:nowrap; }
+    .dot { width:8px; height:8px; border-radius:50%; background:var(--warn-solid); }
+    .status[data-state=loading] .dot { animation:pulse 1.2s ease-in-out infinite; }
+    .status[data-state=ok] .dot { background:var(--ok-solid); box-shadow:0 0 0 3px rgba(16,185,129,.22); }
+    .status[data-state=error] .dot { background:var(--bad-solid); box-shadow:0 0 0 3px rgba(244,63,94,.22); }
+    .chipbtn, .roundbtn {
+      display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; border:1px solid var(--line-2); border-radius:14px; background:var(--surface);
+      color:var(--text); font-size:.86rem; font-weight:700; cursor:pointer; transition:background-color .15s, border-color .15s, box-shadow .15s, transform .08s;
+    }
+    .chipbtn { padding:0 14px; }
+    .roundbtn { width:40px; }
+    .chipbtn:hover, .roundbtn:hover { border-color:var(--brand); }
+    .chipbtn:active, .roundbtn:active { transform:translateY(1px); }
+    .chipbtn:focus-visible, .roundbtn:focus-visible, .day:focus-visible, .bar:focus-visible, .go:focus-visible, .btn:focus-visible, .fab:focus-visible, .switch:focus-visible, .link:focus-visible { outline:0; box-shadow:var(--ring); }
+    .kdot { width:8px; height:8px; border-radius:50%; background:var(--line-2); }
+    .chipbtn.on .kdot { background:var(--ok-solid); box-shadow:0 0 0 3px rgba(16,185,129,.22); }
+    #theme .i-sun { display:none; }
+    :root[data-theme=dark] #theme .i-sun { display:block; }
+    :root[data-theme=dark] #theme .i-moon { display:none; }
+    #refresh.spinning .icon { animation:spin .8s linear infinite; }
+    .keywrap { position:relative; }
+    .pop {
+      position:absolute; right:0; top:calc(100% + 12px); z-index:50; width:min(330px, calc(100vw - 32px)); padding:16px; border:1px solid var(--line-2); border-radius:20px;
+      background:var(--surface); box-shadow:var(--shadow-pop); animation:rise .18s ease-out;
+    }
+    .pop h2 { font-size:.95rem; font-weight:800; }
+    .pop p { margin:4px 0 12px; font-size:.84rem; color:var(--muted); }
+
+    .field {
+      width:100%; height:46px; padding:0 14px; border:1px solid var(--line-2); border-radius:14px; background:var(--surface-2); color:var(--text);
+      font-size:.95rem; transition:border-color .15s, box-shadow .15s, background-color .15s;
+    }
+    .field:hover { border-color:var(--subtle); }
+    .field:focus { outline:0; border-color:var(--brand); box-shadow:var(--ring); background:var(--surface); }
+    .field::placeholder { color:var(--subtle); }
+    select.field { -webkit-appearance:none; appearance:none; padding-right:38px; cursor:pointer; }
+    input[type=search].field, input[type=password].field { -webkit-appearance:none; appearance:none; }
+
+    /* ---- hero ---- */
+    .hero { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:18px; padding:38px 0 18px; }
+    .eyebrow { font-size:.78rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--brand-ink); }
+    h1 {
+      margin:6px 0 4px; font-size:clamp(2.2rem, 6vw, 3.6rem); line-height:1.02; font-weight:800; letter-spacing:-.045em; color:var(--text);
+      background:var(--grad-text); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    }
+    .sub { color:var(--muted); font-weight:600; }
+    .btn {
+      display:inline-flex; align-items:center; justify-content:center; gap:8px; height:46px; padding:0 20px; border:1px solid transparent; border-radius:16px;
+      font-size:.92rem; font-weight:800; line-height:1; white-space:nowrap; cursor:pointer; transition:filter .15s, box-shadow .15s, transform .08s, border-color .15s, background-color .15s;
+    }
+    .btn:active:not(:disabled) { transform:translateY(1px); }
+    .btn:disabled { opacity:.55; cursor:not-allowed; }
+    .btn[aria-busy=true] { opacity:.85; cursor:progress; }
+    .btn-grad { color:#fff; background:var(--grad); box-shadow:0 16px 30px -14px rgba(194,65,12,.9); }
+    .btn-grad:hover:not(:disabled) { filter:brightness(1.08); }
+    .btn-line { background:var(--surface); border-color:var(--line-2); }
+    .btn-line:hover:not(:disabled) { border-color:var(--brand); }
+    .spinner { display:inline-block; flex:none; width:14px; height:14px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin .7s linear infinite; }
+
+    /* ---- date strip ---- */
+    .days { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .days-scroll { display:flex; flex:1; gap:10px; min-width:0; padding:4px 2px 12px; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:thin; scrollbar-color:var(--line-2) transparent; }
+    .day {
+      display:grid; flex:none; justify-items:center; gap:1px; width:66px; padding:11px 0 9px; border:1px solid var(--line); border-radius:20px; background:var(--surface);
+      color:var(--muted); cursor:pointer; scroll-snap-align:center; transition:border-color .15s, transform .12s, box-shadow .15s;
+    }
+    .day:hover { border-color:var(--brand); transform:translateY(-2px); }
+    .day .w { font-size:.68rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+    .day .n { font-size:1.45rem; font-weight:800; line-height:1.1; color:var(--text); font-variant-numeric:tabular-nums; }
+    .day .m { font-size:.68rem; font-weight:700; }
+    .day .mk { width:6px; height:6px; margin-top:4px; border-radius:50%; background:transparent; }
+    .day.has .mk { background:var(--ok-solid); }
+    .day.today .w { color:var(--brand-ink); }
+    .day[aria-pressed=true] { border-color:transparent; background:var(--grad); color:rgba(255,255,255,.88); box-shadow:0 18px 30px -14px rgba(194,65,12,.85); }
+    .day[aria-pressed=true] .n, .day[aria-pressed=true] .w { color:#fff; }
+    .day[aria-pressed=true] .mk { background:#fff; }
+    .pick { position:relative; flex:none; }
+    .pick .roundbtn { width:52px; height:52px; border-radius:18px; margin-bottom:8px; }
+    .pick input { position:absolute; left:0; bottom:8px; width:52px; height:52px; opacity:0; pointer-events:none; }
+
+    /* ---- bento summary ---- */
+    .bento { display:grid; grid-template-columns:repeat(12, minmax(0, 1fr)); gap:16px; margin:8px 0 22px; }
+    .card { min-width:0; padding:22px; border:1px solid var(--line); border-radius:26px; background:var(--surface); box-shadow:var(--shadow); }
+    .c-ring { grid-column:span 5; display:flex; align-items:center; gap:22px; }
+    .c-trend { grid-column:span 4; display:flex; flex-direction:column; gap:14px; }
+    .c-stats { grid-column:span 3; display:grid; gap:16px; grid-template-rows:1fr 1fr; }
+    .lbl { font-size:.74rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--subtle); }
+    .note { margin-top:2px; font-size:.86rem; font-weight:600; color:var(--muted); }
+    .ringbox { position:relative; flex:none; width:136px; height:136px; }
+    .ringbox svg { width:100%; height:100%; transform:rotate(-90deg); }
+    .ringbox circle { fill:none; stroke-width:9; }
+    .r-trk { stroke:var(--line); }
+    .r-val { stroke:url(#ringGrad); stroke-linecap:round; transition:stroke-dasharray .8s cubic-bezier(.2, .8, .2, 1); }
+    .ringnum { position:absolute; inset:0; display:grid; place-content:center; text-align:center; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+    .ringnum b { font-size:2rem; letter-spacing:-.04em; }
+    .ringnum span { margin-top:2px; font-size:.78rem; color:var(--subtle); }
+    .big { margin-top:4px; font-size:2.1rem; font-weight:800; letter-spacing:-.04em; line-height:1.1; font-variant-numeric:tabular-nums; }
+    .link { margin-top:10px; padding:8px 0; border:0; background:none; color:var(--brand-ink); font-size:.86rem; font-weight:800; cursor:pointer; text-decoration:underline; text-underline-offset:3px; border-radius:6px; }
+    .card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .ico { display:grid; flex:none; place-items:center; width:38px; height:38px; border-radius:13px; background:var(--surface-2); color:var(--brand-ink); }
+    .ico.ok { background:var(--ok-soft); color:var(--ok); }
+    .ico.warn { background:var(--warn-soft); color:var(--warn); }
+    .bars { display:flex; flex:1; align-items:flex-end; gap:8px; min-height:112px; }
+    .bar { display:grid; flex:1; grid-template-rows:1fr auto; gap:6px; height:112px; padding:0; border:0; background:none; cursor:pointer; border-radius:10px; }
+    .bar i { display:block; align-self:end; height:var(--h); min-height:6px; border-radius:9px 9px 4px 4px; background:var(--line-2); transition:height .5s cubic-bezier(.2, .8, .2, 1), background-color .15s; }
+    .bar:hover i { background:var(--brand); }
+    .bar small { display:grid; justify-items:center; font-size:.7rem; font-weight:800; line-height:1.2; color:var(--subtle); }
+    .bar small em { min-height:1em; font-size:.62rem; font-style:normal; font-weight:700; }
+    .bar[aria-pressed=true] i { background:var(--grad); }
+    .bar[aria-pressed=true] small { color:var(--brand-ink); }
+    .stat { position:relative; display:grid; align-content:center; padding:18px 20px; border-radius:22px; }
+    .stat .num { margin-top:2px; font-size:2.1rem; font-weight:800; letter-spacing:-.04em; line-height:1.1; font-variant-numeric:tabular-nums; }
+    .stat .ico { position:absolute; top:16px; right:16px; }
+
+    /* ---- filters ---- */
+    .filters { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:16px; }
+    .search { position:relative; flex:1 1 260px; }
+    .search .icon { position:absolute; left:15px; top:14px; color:var(--subtle); pointer-events:none; }
+    .search .field { padding-left:44px; padding-right:48px; background:var(--surface); }
+    .kbd { position:absolute; right:12px; top:11px; padding:2px 8px; border:1px solid var(--line-2); border-radius:8px; background:var(--surface-2); color:var(--subtle); font-size:.76rem; font-weight:800; pointer-events:none; }
+    .sel { position:relative; flex:0 1 190px; }
+    .sel .field { background:var(--surface); }
+    .sel .icon { position:absolute; right:14px; top:14px; color:var(--subtle); pointer-events:none; }
+    .switch { display:inline-flex; align-items:center; gap:10px; height:46px; padding:0 14px 0 12px; border:1px solid var(--line-2); border-radius:14px; background:var(--surface); font-size:.88rem; font-weight:700; cursor:pointer; }
+    .switch .track { position:relative; width:38px; height:22px; border-radius:999px; background:var(--line-2); transition:background-color .2s; }
+    .switch .track::after { content:""; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .2s; }
+    .switch[aria-checked=true] .track { background:var(--brand); }
+    .switch[aria-checked=true] .track::after { transform:translateX(16px); }
+    .count { margin-left:auto; font-size:.86rem; font-weight:700; color:var(--muted); white-space:nowrap; }
+
+    /* ---- student rows ---- */
+    .list { display:grid; grid-template-columns:repeat(auto-fill, minmax(430px, 1fr)); gap:14px; }
+    .row {
+      min-width:0; display:grid; grid-template-columns:56px minmax(0, 1fr) auto; grid-template-areas:"ava who go" "foot foot foot"; align-items:center; gap:12px 14px;
+      padding:14px 16px 10px; border:1px solid var(--line); border-radius:22px; background:var(--surface); box-shadow:var(--shadow-sm);
+      transition:transform .15s, box-shadow .15s, border-color .15s;
+    }
+    .row:hover { transform:translateY(-2px); box-shadow:var(--shadow); border-color:var(--line-2); }
+    .row.is-done { border-color:var(--ok-line); }
+    .row.flash { animation:glow 1.2s ease-out; }
+    .ava { position:relative; grid-area:ava; width:56px; height:56px; }
+    .ringsvg { position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg); }
+    .ringsvg circle { fill:none; stroke-width:3; }
+    .ringsvg .trk { stroke:var(--line); }
+    .ringsvg .val { transition:stroke-dasharray .6s ease; }
+    .ringsvg .val.ok { stroke:var(--ok-solid); }
+    .ringsvg .val.warn { stroke:var(--warn-solid); }
+    .ringsvg .val.bad { stroke:var(--bad-solid); }
+    .ringsvg .val.none { stroke:var(--line-2); }
+    .face {
+      position:absolute; inset:6px; display:grid; place-items:center; border-radius:50%; font-size:.9rem; font-weight:800; letter-spacing:.02em;
+      background:hsl(var(--h) 85% 92%); color:hsl(var(--h) 60% 26%);
+    }
+    :root[data-theme=dark] .face { background:hsl(var(--h) 45% 24%); color:hsl(var(--h) 85% 85%); }
+    .who { grid-area:who; min-width:0; }
+    .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:1rem; font-weight:800; letter-spacing:-.01em; }
+    .mt { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.82rem; font-weight:600; color:var(--muted); }
+    .rt { font-size:.76rem; font-weight:800; color:var(--subtle); }
+    .foot { grid-area:foot; display:flex; align-items:center; justify-content:space-between; gap:8px; padding-top:8px; border-top:1px dashed var(--line); }
+    .acts { display:flex; align-items:center; gap:2px; }
+    .mini {
+      display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 11px; border:0; border-radius:11px; background:transparent; color:var(--muted);
+      font-size:.8rem; font-weight:800; cursor:pointer; transition:background-color .15s, color .15s;
+    }
+    .mini .icon { width:16px; height:16px; }
+    .mini:hover { background:var(--surface-2); color:var(--text); }
+    .mini.del:hover { background:var(--bad-soft); color:var(--bad); }
+    .mini:focus-visible { outline:0; box-shadow:var(--ring); }
+    @media (pointer:coarse) { .mini { height:40px; } } /* bigger tap target on touch screens */
+    .go {
+      grid-area:go; display:inline-flex; flex:none; align-items:center; justify-content:center; gap:7px; height:44px; padding:0 15px; border:1px solid var(--line-2); border-radius:15px;
+      background:var(--surface-2); color:var(--text); font-size:.84rem; font-weight:800; cursor:pointer; transition:background-color .15s, border-color .15s, color .15s, box-shadow .15s, transform .08s;
+    }
+    .go:hover:not(:disabled) { color:#fff; border-color:transparent; background:var(--grad); box-shadow:0 14px 24px -12px rgba(194,65,12,.85); }
+    .go:active:not(:disabled) { transform:translateY(1px); }
+    .go:disabled { cursor:not-allowed; opacity:.55; }
+    .go[aria-busy=true] { cursor:progress; opacity:.9; }
+    .go.done, .go.done:disabled { color:var(--ok); border-color:var(--ok-line); background:var(--ok-soft); opacity:1; cursor:default; }
+    .go.done.fresh svg { stroke-dasharray:30; animation:draw .5s ease-out; }
+
+    /* ---- loading, empty, error ---- */
+    .sk { display:block; border-radius:10px; background:linear-gradient(90deg, var(--line) 25%, var(--surface-2) 40%, var(--line) 60%); background-size:400% 100%; animation:shimmer 1.4s ease infinite; }
+    .sk-row { display:flex; align-items:center; gap:14px; padding:14px 16px; border:1px solid var(--line); border-radius:22px; background:var(--surface); }
+    .sk-col { display:grid; flex:1; gap:8px; }
+    .sk.c56 { width:56px; height:56px; border-radius:50%; flex:none; }
+    .sk.l { height:13px; width:65%; }
+    .sk.s { height:10px; width:45%; }
+    .sk.b { width:112px; height:44px; border-radius:15px; flex:none; }
+    .state { display:grid; justify-items:center; gap:8px; padding:64px 24px; border:1px dashed var(--line-2); border-radius:28px; background:var(--glass); text-align:center; }
+    .state-ico { display:grid; place-items:center; width:64px; height:64px; margin-bottom:4px; border-radius:22px; background:var(--surface-2); color:var(--brand-ink); }
+    .state-ico.bad { background:var(--bad-soft); color:var(--bad); }
+    .state-ico.ok { background:var(--ok-soft); color:var(--ok); }
+    .state-ico .icon { width:28px; height:28px; }
+    .state h2 { font-size:1.25rem; font-weight:800; letter-spacing:-.02em; }
+    .state p { max-width:42ch; margin-bottom:10px; color:var(--muted); }
+
+    /* ---- add-student drawer ---- */
+    dialog.drawer {
+      width:min(440px, 100vw); height:100dvh; max-height:100dvh; margin:0 0 0 auto; padding:0; border:0; border-left:1px solid var(--line-2);
+      border-radius:30px 0 0 30px; background:var(--surface); color:var(--text); box-shadow:var(--shadow-pop);
+    }
+    dialog.drawer[open] { animation:slidein .3s cubic-bezier(.2, .8, .2, 1); }
+    dialog.drawer::backdrop { background:rgba(8, 12, 28, .5); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+    #add { display:flex; flex-direction:column; gap:16px; min-height:100%; padding:28px 26px; }
+    .dlg-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .dlg-head h2 { font-size:1.5rem; font-weight:800; letter-spacing:-.03em; }
+    .dlg-sub { margin-top:-6px; color:var(--muted); font-size:.92rem; }
+    .fld { display:grid; gap:6px; }
+    .fld > span { font-size:.78rem; font-weight:800; color:var(--muted); }
+    .noteb { padding:11px 14px; border-radius:14px; font-size:.88rem; font-weight:700; }
+    .noteb.ok { background:var(--ok-soft); color:var(--ok); }
+    .noteb.bad { background:var(--bad-soft); color:var(--bad); }
+    .dlg-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:auto; padding-top:8px; }
+    .dates { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+    .dateitem { display:flex; align-items:center; gap:8px; }
+    .dateitem .field { flex:1; height:42px; }
+    .btn-sm { align-self:flex-start; height:38px; padding:0 14px; border-radius:13px; font-size:.84rem; }
+    .btn-danger { color:#fff; background:#be123c; box-shadow:0 14px 26px -14px rgba(190, 18, 60, .9); }
+    .btn-danger:hover:not(:disabled) { filter:brightness(1.12); }
+    dialog.confirm { width:min(420px, calc(100vw - 32px)); padding:0; border:1px solid var(--line-2); border-radius:28px; background:var(--surface); color:var(--text); box-shadow:var(--shadow-pop); }
+    dialog.confirm::backdrop { background:rgba(8, 12, 28, .55); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+    dialog.confirm[open] { animation:rise .22s ease-out; }
+    #c-form { display:grid; justify-items:center; gap:10px; padding:28px 24px 22px; text-align:center; }
+    #c-form h2 { font-size:1.3rem; font-weight:800; letter-spacing:-.02em; }
+    #c-form p { color:var(--muted); font-size:.94rem; }
+    #c-form .dlg-actions { justify-content:center; margin-top:6px; }
+    .fab { display:none; }
+
+    /* ---- toasts ---- */
+    .toasts { position:fixed; left:50%; bottom:24px; z-index:100; display:grid; gap:10px; width:min(440px, calc(100vw - 32px)); transform:translateX(-50%); pointer-events:none; }
+    .toast {
+      display:flex; align-items:center; gap:12px; padding:12px 12px 12px 16px; border-radius:18px; background:var(--toast-bg); color:var(--toast-fg);
+      box-shadow:var(--shadow-pop); pointer-events:auto; animation:rise .25s ease-out;
+    }
+    .toast > .icon { color:#34d399; }
+    .toast.bad > .icon { color:#fb7185; }
+    :root:not([data-theme=dark]) .toast > .icon { color:#6ee7b7; }
+    :root[data-theme=dark] .toast > .icon { color:#059669; }
+    :root[data-theme=dark] .toast.bad > .icon { color:#e11d48; }
+    .toast p { flex:1; font-size:.9rem; font-weight:700; line-height:1.4; }
+    .toast.out { opacity:0; transform:translateY(8px); transition:opacity .2s, transform .2s; }
+    .toast-x { display:grid; place-items:center; flex:none; width:30px; height:30px; border:0; border-radius:50%; background:transparent; color:inherit; opacity:.7; cursor:pointer; }
+    .toast-x:hover { opacity:1; background:rgba(127, 127, 127, .22); }
+    .toast-x:focus-visible { outline:2px solid currentColor; }
+    .toast-x .icon { width:16px; height:16px; }
+
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @keyframes pulse { 50% { opacity:.35; transform:scale(.8); } }
+    @keyframes shimmer { from { background-position:100% 50%; } to { background-position:0 50%; } }
+    @keyframes rise { from { opacity:0; transform:translateY(10px) scale(.98); } }
+    @keyframes slidein { from { opacity:.4; transform:translateX(40px); } }
+    @keyframes slideup { from { opacity:.4; transform:translateY(40px); } }
+    @keyframes draw { from { stroke-dashoffset:30; } to { stroke-dashoffset:0; } }
+    @keyframes glow { 0% { box-shadow:0 0 0 0 rgba(16, 185, 129, .55); } 100% { box-shadow:0 0 0 14px rgba(16, 185, 129, 0); } }
+
+    /* ---- tablets ---- */
+    @media (max-width:960px) {
+      .bento { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .c-ring, .c-trend { grid-column:1 / -1; }
+      .c-stats { display:contents; }
+      .stat { min-height:104px; }
+    }
+
+    /* ---- phones ---- */
+    @media (max-width:640px) {
+      .wrap { padding:0 16px; }
+      .navwrap { padding:10px 10px 0; }
+      .nav { gap:8px; padding:8px 10px 8px 12px; }
+      .brand span:last-child { display:none; }
+      .status { padding:7px 10px; }
+      .chipbtn .lbl-key { display:none; }
+      .chipbtn { width:40px; padding:0; }
+      .hero { padding:28px 0 14px; }
+      .hero .btn-grad { display:none; }
+      .hero-actions { display:none; }
+      .c-ring { align-items:center; gap:16px; }
+      .ringbox { width:104px; height:104px; }
+      .ringnum b { font-size:1.55rem; }
+      .big { font-size:1.7rem; }
+      .stat .ico { display:none; }
+      .days-scroll { scrollbar-width:none; }
+      .days-scroll::-webkit-scrollbar { display:none; }
+      .card { padding:18px; border-radius:22px; }
+      .filters { gap:8px; }
+      .sel { flex:1 1 calc(50% - 4px); }
+      .switch { flex:1 1 100%; justify-content:space-between; }
+      .count { margin-left:0; flex:1 1 100%; }
+      .list { grid-template-columns:minmax(0, 1fr); }
+      .go .lbl-go { display:none; }
+      .go { width:44px; padding:0; }
+      .fab {
+        position:fixed; right:18px; bottom:22px; z-index:60; display:grid; place-items:center; width:58px; height:58px; border:0; border-radius:20px; color:#fff;
+        background:var(--grad); box-shadow:0 18px 34px -12px rgba(194,65,12,.9); cursor:pointer;
+      }
+      .toasts { bottom:96px; }
+      dialog.drawer {
+        width:100%; max-width:100%; height:auto; max-height:92dvh; margin:auto 0 0; border-left:0; border-top:1px solid var(--line-2); border-radius:30px 30px 0 0;
+      }
+      dialog.drawer[open] { animation:slideup .3s cubic-bezier(.2, .8, .2, 1); }
+      #add { padding:24px 20px 28px; }
+      .field, .switch { font-size:16px; }
+      .pop { position:fixed; left:16px; right:16px; top:70px; width:auto; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .status[data-state] .dot, .sk, .toast, .pop, dialog.drawer[open], .row.flash, .go.done.fresh svg { animation:none; }
+      .r-val, .bar i, .ringsvg .val, .row, .day, .go, .switch .track, .switch .track::after { transition:none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- icon sprite (Lucide-style outlines) + the gradient the big progress ring uses -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c2410c"/><stop offset=".55" stop-color="#db2777"/><stop offset="1" stop-color="#f59e0b"/></linearGradient>
+    </defs>
+    <symbol id="i-logo" viewBox="0 0 24 24"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+    <symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7.4 18.6 3 20l1.4-4.4Z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></symbol>
+  </svg>
+  <div class="bg" aria-hidden="true"></div>
+
+  <div class="navwrap">
+    <header class="nav">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"><svg class="icon"><use href="#i-logo"/></svg></span>
+        <span>Lab Roll Call</span>
+      </div>
+      <div class="nav-actions">
+        <span class="status" id="conn" data-state="loading" role="status"><span class="dot" aria-hidden="true"></span><span id="conn-text">Connecting…</span></span>
+        <div class="keywrap">
+          <button class="chipbtn" id="keybtn" type="button" aria-expanded="false" aria-controls="keypop"><svg class="icon" aria-hidden="true"><use href="#i-key"/></svg><span class="lbl-key">Teacher key</span><i class="kdot" aria-hidden="true"></i></button>
+          <div class="pop" id="keypop" role="group" aria-label="Teacher key" hidden>
+            <h2>Teacher key</h2>
+            <p>Needed to add, edit, delete and mark attendance. It stays in this browser only.</p>
+            <label class="sr-only" for="key">Teacher key</label>
+            <input class="field" id="key" type="password" autocomplete="off" placeholder="Enter your key">
+          </div>
+        </div>
+        <button class="roundbtn" id="theme" type="button" aria-label="Switch colour theme"><svg class="icon i-moon" aria-hidden="true"><use href="#i-moon"/></svg><svg class="icon i-sun" aria-hidden="true"><use href="#i-sun"/></svg></button>
+        <button class="roundbtn" id="refresh" type="button" aria-label="Refresh list" title="Refresh"><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg></button>
+      </div>
+    </header>
+  </div>
+
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Attendance management portal</p>
+        <h1 id="h-title">Today</h1>
+        <p class="sub" id="h-sub">&nbsp;</p>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-grad" id="addToggle" type="button"><svg class="icon" aria-hidden="true"><use href="#i-user-plus"/></svg>Add student</button>
+      </div>
+    </section>
+
+    <section class="days" aria-label="Class date">
+      <div class="days-scroll" id="strip" role="group" aria-label="Pick a class day"></div>
+      <div class="pick">
+        <button class="roundbtn" id="pickbtn" type="button" aria-label="Pick another date" title="Pick another date"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg></button>
+        <input id="picker" type="date" tabindex="-1" aria-hidden="true">
+      </div>
+    </section>
+
+    <section class="bento" aria-label="Summary for the chosen day">
+      <article class="card c-ring">
+        <div class="ringbox">
+          <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="r-trk" cx="60" cy="60" r="52" pathLength="100"/><circle class="r-val" id="r-val" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="0 100"/></svg>
+          <div class="ringnum"><b id="r-pct">–</b><span>percent</span></div>
+        </div>
+        <div>
+          <p class="lbl">Present</p>
+          <p class="big" id="r-main">–</p>
+          <p class="note" id="r-note">&nbsp;</p>
+          <button class="link" id="left-btn" type="button">Show who’s left</button>
+        </div>
+      </article>
+      <article class="card c-trend">
+        <div class="card-head">
+          <div><p class="lbl">Class attendance</p><p class="note">Share of students present, by day</p></div>
+          <span class="ico" aria-hidden="true"><svg class="icon"><use href="#i-chart"/></svg></span>
+        </div>
+        <div class="bars" id="bars" role="group" aria-label="Attendance by class day"></div>
+      </article>
+      <div class="c-stats">
+        <article class="card stat"><p class="lbl">Marked present</p><p class="num" id="st-present">–</p><span class="ico ok" aria-hidden="true"><svg class="icon"><use href="#i-check-circle"/></svg></span></article>
+        <article class="card stat"><p class="lbl">Still to mark</p><p class="num" id="st-left">–</p><span class="ico warn" aria-hidden="true"><svg class="icon"><use href="#i-clock"/></svg></span></article>
+      </div>
+    </section>
+
+    <section class="filters" aria-label="Find students">
+      <div class="search">
+        <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+        <label class="sr-only" for="q">Search students</label>
+        <input class="field" id="q" type="search" placeholder="Search students" autocomplete="off">
+        <span class="kbd" aria-hidden="true">/</span>
+      </div>
+      <div class="sel">
+        <label class="sr-only" for="section">Section</label>
+        <select class="field" id="section"><option value="">All sections</option></select>
+        <svg class="icon" aria-hidden="true"><use href="#i-down"/></svg>
+      </div>
+      <div class="sel">
+        <label class="sr-only" for="subject">Subject</label>
+        <select class="field" id="subject"><option value="">All subjects</option></select>
+        <svg class="icon" aria-hidden="true"><use href="#i-down"/></svg>
+      </div>
+      <button class="switch" id="open" type="button" role="switch" aria-checked="false"><span>Not marked yet</span><span class="track" aria-hidden="true"></span></button>
+      <p class="count" id="count" aria-live="polite"></p>
+    </section>
+
+    <div class="list" id="v-loading" role="status">
+      <span class="sr-only">Loading students…</span>
+      <div class="sk-row"><span class="sk c56"></span><span class="sk-col"><span class="sk l"></span><span class="sk s"></span></span><span class="sk b"></span></div>
+      <div class="sk-row"><span class="sk c56"></span><span class="sk-col"><span class="sk l"></span><span class="sk s"></span></span><span class="sk b"></span></div>
+      <div class="sk-row"><span class="sk c56"></span><span class="sk-col"><span class="sk l"></span><span class="sk s"></span></span><span class="sk b"></span></div>
+      <div class="sk-row"><span class="sk c56"></span><span class="sk-col"><span class="sk l"></span><span class="sk s"></span></span><span class="sk b"></span></div>
+      <div class="sk-row"><span class="sk c56"></span><span class="sk-col"><span class="sk l"></span><span class="sk s"></span></span><span class="sk b"></span></div>
+      <div class="sk-row"><span class="sk c56"></span><span class="sk-col"><span class="sk l"></span><span class="sk s"></span></span><span class="sk b"></span></div>
+    </div>
+    <div class="list" id="v-list" hidden></div>
+
+    <div class="state" id="v-empty" hidden>
+      <span class="state-ico" id="empty-ico" aria-hidden="true"><svg class="icon"><use href="#i-users"/></svg></span>
+      <h2 id="empty-title">No students match</h2>
+      <p id="empty-text">Try a different name or clear the filters.</p>
+      <button class="btn btn-line" id="clear" type="button">Clear filters</button>
+      <button class="btn btn-grad" id="emptyAdd" type="button" hidden><svg class="icon" aria-hidden="true"><use href="#i-user-plus"/></svg>Add student</button>
+    </div>
+
+    <div class="state" id="v-error" role="alert" hidden>
+      <span class="state-ico bad" aria-hidden="true"><svg class="icon"><use href="#i-alert"/></svg></span>
+      <h2>Can’t load the students</h2>
+      <p id="error-text">Something went wrong.</p>
+      <button class="btn btn-grad" id="retry" type="button">Try again</button>
+    </div>
+    <div style="height:96px" aria-hidden="true"></div>
+  </main>
+
+  <button class="fab" id="fab" type="button" aria-label="Add student"><svg class="icon" style="width:24px;height:24px" aria-hidden="true"><use href="#i-user-plus"/></svg></button>
+
+  <dialog class="drawer" id="drawer" aria-labelledby="add-title">
+    <form id="add" method="dialog">
+      <div class="dlg-head">
+        <h2 id="add-title">Add a student</h2>
+        <button class="roundbtn" id="addClose" type="button" aria-label="Close"><svg class="icon" aria-hidden="true"><use href="#i-x"/></svg></button>
+      </div>
+      <p class="dlg-sub" id="add-sub">Add the student with the date they were present. Remove the date to add them without any attendance yet.</p>
+      <label class="fld"><span>Student name</span><input class="field" name="studentName" required maxlength="100" placeholder="e.g. Maria Santos" autocomplete="off" autofocus></label>
+      <label class="fld"><span>Section</span><input class="field" name="section" list="sections" required maxlength="50" placeholder="e.g. BSIT-3A" autocomplete="off"></label>
+      <label class="fld"><span>Subject</span><input class="field" name="subjectName" list="subjects" required maxlength="100" placeholder="e.g. Database 2" autocomplete="off"></label>
+      <datalist id="sections"></datalist>
+      <datalist id="subjects"></datalist>
+      <div class="fld" role="group" aria-labelledby="dates-label">
+        <span id="dates-label">Attendance dates</span>
+        <ul class="dates" id="dates"></ul>
+        <button class="btn btn-line btn-sm" id="addDate" type="button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Add a date</button>
+      </div>
+      <p class="noteb" id="add-note" role="status" hidden></p>
+      <div class="dlg-actions">
+        <button class="btn btn-line" id="addCancel" type="button">Done</button>
+        <button class="btn btn-grad" type="submit" id="add-submit"><svg class="icon" aria-hidden="true"><use href="#i-user-plus"/></svg><span id="add-submit-label">Add student</span></button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="confirm" id="confirm" aria-labelledby="c-title">
+    <form id="c-form" method="dialog">
+      <span class="state-ico bad" aria-hidden="true"><svg class="icon"><use href="#i-trash"/></svg></span>
+      <h2 id="c-title">Delete this record?</h2>
+      <p id="c-text"></p>
+      <div class="dlg-actions">
+        <button class="btn btn-line" id="c-cancel" type="button">Cancel</button>
+        <button class="btn btn-danger" id="c-ok" type="submit">Delete</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+
+  <script>
+    // The Vercel backend. It talks to MongoDB; this page never touches the database directly.
+    const API = '/api';
+    const $ = (id) => document.getElementById(id);
+    let records = [];
+    let loaded = false;   // true after the first successful fetch
+    let onlyOpen = false; // the "Not marked yet" switch
+    let date = '';        // the chosen class day, YYYY-MM-DD
+    let scrolledTo = '';  // the day the date strip last scrolled to
+
+    // ---------- small UI helpers (all text goes in through textContent, never innerHTML) ----------
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    function icon(name) {
+      const svg = document.createElementNS(SVG_NS, 'svg');
+      const use = document.createElementNS(SVG_NS, 'use');
+      svg.setAttribute('class', 'icon');
+      svg.setAttribute('aria-hidden', 'true');
+      use.setAttribute('href', '#i-' + name);
+      svg.append(use);
+      return svg;
+    }
+
+    function spinner() {
+      const s = document.createElement('span');
+      s.className = 'spinner';
+      s.setAttribute('aria-hidden', 'true');
+      return s;
+    }
+
+    function toast(text, kind) {
+      const bad = kind === 'bad';
+      const el = document.createElement('div');
+      el.className = 'toast' + (bad ? ' bad' : '');
+      if (bad) el.setAttribute('role', 'alert');
+      const msg = document.createElement('p');
+      msg.textContent = text;
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'toast-x';
+      x.setAttribute('aria-label', 'Dismiss');
+      x.append(icon('x'));
+      const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 200); };
+      x.addEventListener('click', close);
+      el.append(icon(bad ? 'alert' : 'check-circle'), msg, x);
+      const box = $('toasts');
+      box.append(el);
+      while (box.children.length > 3) box.firstChild.remove(); // a burst of taps never fills the screen
+      setTimeout(close, bad ? 7000 : 3500);
+    }
+
+    function conn(state, text) { // connection badge: loading | ok | error
+      $('conn').dataset.state = state;
+      $('conn-text').textContent = text;
+    }
+
+    function view(name) { // loading | list | empty | error: exactly one is visible
+      for (const v of ['loading', 'list', 'empty', 'error']) $('v-' + v).hidden = v !== name;
+    }
+
+    // Swaps a button's label for a spinner while `work` runs, then restores it.
+    async function busy(btn, label, work) {
+      const keep = [...btn.childNodes];
+      btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
+      btn.replaceChildren(spinner(), label);
+      try {
+        return await work();
+      } finally {
+        btn.replaceChildren(...keep);
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+      }
+    }
+
+    // ---------- colour theme ----------
+    function setTheme(t) {
+      const root = document.documentElement;
+      root.classList.add('swap'); // everything changes together instead of fading at different speeds
+      root.dataset.theme = t;
+      requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove('swap')));
+      try { localStorage.setItem('theme', t); } catch (e) {}
+      $('theme').setAttribute('aria-label', t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    }
+    setTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+    $('theme').addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'));
+
+    // ---------- teacher key (stays in this browser only) ----------
+    function keyUI() { $('keybtn').classList.toggle('on', $('key').value.length > 0); }
+    function openKey() {
+      $('keypop').hidden = false;
+      $('keybtn').setAttribute('aria-expanded', 'true');
+      $('key').focus();
+    }
+    function closeKey() {
+      $('keypop').hidden = true;
+      $('keybtn').setAttribute('aria-expanded', 'false');
+    }
+    try { $('key').value = localStorage.getItem('teacherKey') || ''; } catch (e) {}
+    keyUI();
+    $('key').addEventListener('input', () => {
+      try { localStorage.setItem('teacherKey', $('key').value); } catch (e) {}
+      keyUI();
+    });
+    $('keybtn').addEventListener('click', () => ($('keypop').hidden ? openKey() : closeKey()));
+    document.addEventListener('click', (e) => {
+      if (!$('keypop').hidden && !$('keypop').contains(e.target) && !$('keybtn').contains(e.target)) closeKey();
+    });
+    $('key').addEventListener('keydown', (e) => { if (e.key === 'Enter') closeKey(); });
+
+    // ---------- server calls ----------
+    async function api(method, query, body) {
+      const init = { method };
+      if (method !== 'GET') {
+        init.headers = { 'Content-Type': 'application/json', 'x-api-key': $('key').value };
+        init.body = JSON.stringify(body);
+      }
+      const res = await fetch(API + query, init).catch(() => {
+        throw new Error('Cannot reach the server. Check your internet connection.');
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed (' + res.status + ')'), { status: res.status });
+      return data;
+    }
+
+    function fail(err) {
+      if (err.status === 401) {
+        toast('That teacher key was not accepted. Check it under “Teacher key”.', 'bad');
+        openKey();
+        $('key').select();
+      } else {
+        toast(err.message, 'bad');
+      }
+    }
+
+    // ---------- dates and attendance ----------
+    // Dates are stored as UTC midnight, so they are read as UTC.
+    const today = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in your timezone
+    const utc = (d, opts) => new Date(d + 'T00:00:00Z').toLocaleDateString(undefined, { ...opts, timeZone: 'UTC' });
+    const pretty = (d) => utc(d, { month: 'short', day: 'numeric' });
+    const long = (d) => utc(d, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const dayNum = (d) => String(Number(d.slice(8, 10)));
+    function rel(d) {
+      const diff = Math.round((Date.parse(d + 'T00:00:00Z') - Date.parse(today() + 'T00:00:00Z')) / 864e5);
+      return diff === 0 ? 'Today' : diff === -1 ? 'Yesterday' : diff === 1 ? 'Tomorrow' : utc(d, { weekday: 'long' });
+    }
+    const daysOf = (r) => (Array.isArray(r.attendanceDates) ? r.attendanceDates : []).filter((d) => typeof d === 'string').map((d) => d.slice(0, 10));
+    const classDays = () => [...new Set(records.flatMap(daysOf))].sort(); // every day anyone was marked present
+
+    const HUES = [239, 160, 199, 38, 350, 262]; // indigo, emerald, sky, amber, rose, violet
+    const hue = (name) => HUES[[...name].reduce((h, c) => (h * 31 + c.codePointAt(0)) >>> 0, 7) % HUES.length];
+    function initials(name) {
+      const words = name.trim().split(/\s+/);
+      const first = (w) => Array.from(w)[0] || '';
+      return ((first(words[0]) + (words.length > 1 ? first(words[words.length - 1]) : '')) || '?').toUpperCase();
+    }
+
+    function fill(select, label, values) {
+      const keep = select.value;
+      select.replaceChildren(new Option(label, ''), ...[...new Set(values)].sort().map((v) => new Option(v, v)));
+      select.value = keep;
+    }
+
+    // ---------- drawing ----------
+    // The days shown in the strip: a window of up to 14 around the chosen day.
+    function stripDays() {
+      const all = [...new Set([...classDays(), today(), date])].sort();
+      const i = all.indexOf(date);
+      const start = Math.max(0, Math.min(i - 6, all.length - 14));
+      return all.slice(start, start + 14);
+    }
+
+    function renderStrip() {
+      const recorded = new Set(classDays());
+      const t = today();
+      const days = stripDays();
+      $('strip').replaceChildren(...days.map((d) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'day' + (recorded.has(d) ? ' has' : '') + (d === t ? ' today' : '');
+        b.dataset.day = d;
+        b.setAttribute('aria-pressed', String(d === date));
+        b.setAttribute('aria-label', long(d));
+        for (const [cls, text] of [['w', utc(d, { weekday: 'short' })], ['n', dayNum(d)], ['m', utc(d, { month: 'short' })]]) {
+          const s = document.createElement('span');
+          s.className = cls;
+          s.textContent = text;
+          b.append(s);
+        }
+        b.append(Object.assign(document.createElement('i'), { className: 'mk' }));
+        b.addEventListener('click', () => choose(d));
+        return b;
+      }));
+      if (scrolledTo !== date) { // keep the chosen day in view, but only when it changed
+        $('strip').querySelector('[aria-pressed=true]')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+        scrolledTo = date;
+      }
+      return days;
+    }
+
+    function renderSummary(base, days) {
+      const total = base.length;
+      const here = base.filter((r) => daysOf(r).includes(date)).length;
+      const pct = total ? here / total : 0;
+      $('r-val').style.strokeDasharray = (loaded ? pct * 100 : 0) + ' 100';
+      $('r-pct').textContent = loaded ? Math.round(pct * 100) : '–';
+      $('r-main').textContent = loaded ? here + ' of ' + total : '–';
+      $('r-note').textContent = loaded ? (total - here) + ' not marked yet' : ' ';
+      $('st-present').textContent = loaded ? here : '–';
+      $('st-left').textContent = loaded ? total - here : '–';
+
+      // bar chart: share present on each of 8 days around the chosen one
+      const i = days.indexOf(date);
+      const from = Math.max(0, Math.min(i - 3, days.length - 8));
+      $('bars').replaceChildren(...days.slice(from, from + 8).map((d, k, shownDays) => {
+        const n = base.filter((r) => daysOf(r).includes(d)).length;
+        const b = document.createElement('button');
+        const bar = document.createElement('i');
+        const lab = document.createElement('small');
+        b.type = 'button';
+        b.className = 'bar';
+        b.setAttribute('aria-pressed', String(d === date));
+        b.setAttribute('aria-label', pretty(d) + ': ' + n + ' of ' + total + ' present');
+        b.title = pretty(d) + ' · ' + n + ' of ' + total + ' present';
+        bar.style.setProperty('--h', (loaded && total ? Math.round((n / total) * 100) : 0) + '%');
+        const month = utc(d, { month: 'short' });
+        const mo = document.createElement('em'); // the month shows under the first bar and wherever it changes
+        mo.textContent = !k || month !== utc(shownDays[k - 1], { month: 'short' }) ? month : '';
+        lab.append(dayNum(d), mo);
+        b.append(bar, lab);
+        b.addEventListener('click', () => choose(d));
+        return b;
+      }));
+      return here;
+    }
+
+    // Each student's ring shows how many of the class days they were present.
+    function ring(frac, tone) {
+      const svg = document.createElementNS(SVG_NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 36 36');
+      svg.setAttribute('class', 'ringsvg');
+      svg.setAttribute('aria-hidden', 'true');
+      for (const cls of ['trk', 'val ' + tone]) {
+        const c = document.createElementNS(SVG_NS, 'circle');
+        c.setAttribute('cx', '18');
+        c.setAttribute('cy', '18');
+        c.setAttribute('r', '16');
+        c.setAttribute('pathLength', '100');
+        c.setAttribute('class', cls);
+        if (cls !== 'trk') c.setAttribute('stroke-dasharray', Math.round(frac * 100) + ' 100');
+        svg.append(c);
+      }
+      return svg;
+    }
+
+    function row(r, nClass, classSet) {
+      const mine = new Set(daysOf(r));
+      const done = mine.has(date);
+      const attended = [...mine].filter((d) => classSet.has(d)).length;
+      const frac = nClass ? attended / nClass : 0;
+      const tone = !nClass ? 'none' : frac >= 0.8 ? 'ok' : frac >= 0.5 ? 'warn' : 'bad';
+      const el = document.createElement('article');
+      el.className = 'row' + (done ? ' is-done' : '');
+      el.dataset.id = r._id;
+
+      const face = document.createElement('span');
+      face.className = 'face';
+      face.textContent = initials(r.studentName);
+      face.style.setProperty('--h', hue(r.studentName));
+      const ava = document.createElement('div');
+      ava.className = 'ava';
+      ava.append(ring(frac, tone), face);
+
+      const nm = document.createElement('div');
+      nm.className = 'nm';
+      nm.textContent = r.studentName;
+      nm.title = r.studentName;
+      const mt = document.createElement('div');
+      mt.className = 'mt';
+      mt.textContent = r.section + ' · ' + r.subjectName;
+      const rt = document.createElement('div');
+      rt.className = 'rt';
+      rt.textContent = nClass ? attended + ' of ' + nClass + ' class days' : 'No class days yet';
+      const who = document.createElement('div');
+      who.className = 'who';
+      who.append(nm, mt);
+
+      const btn = document.createElement('button');
+      const label = document.createElement('span');
+      label.className = 'lbl-go';
+      label.textContent = done ? 'Present' : 'Mark present';
+      btn.type = 'button';
+      btn.className = 'go' + (done ? ' done' : '');
+      btn.append(icon(done ? 'check' : 'check-circle'), label);
+      btn.disabled = done || !date;
+      if (!date) btn.title = 'Pick a class day first';
+      btn.setAttribute('aria-label', (done ? 'Already present: ' : 'Mark present: ') + r.studentName + ' on ' + date);
+      btn.addEventListener('click', () => mark(r, btn));
+
+      // Edit and Delete sit under each student, next to how often they were present.
+      const miniBtn = (text, glyph, label) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'mini';
+        b.setAttribute('aria-label', label);
+        b.append(icon(glyph), text);
+        return b;
+      };
+      const edit = miniBtn('Edit', 'edit', 'Edit ' + r.studentName);
+      edit.addEventListener('click', () => openForm(r));
+      const del = miniBtn('Delete', 'trash', 'Delete ' + r.studentName);
+      del.classList.add('del');
+      del.addEventListener('click', () => askDelete(r));
+      const acts = document.createElement('div');
+      acts.className = 'acts';
+      acts.append(edit, del);
+      const foot = document.createElement('div');
+      foot.className = 'foot';
+      foot.append(rt, acts);
+
+      el.append(ava, who, btn, foot);
+      return el;
+    }
+
+    function render() {
+      if (!date) date = today();
+      const q = $('q').value.trim().toLowerCase(), sec = $('section').value, sub = $('subject').value;
+      const base = records.filter((r) =>
+        (!sec || r.section === sec) && (!sub || r.subjectName === sub) && r.studentName.toLowerCase().includes(q));
+      $('h-title').textContent = rel(date);
+      $('h-sub').textContent = long(date);
+      $('picker').value = date;
+      const days = renderStrip();
+      renderSummary(base, days);
+      $('left-btn').hidden = !loaded;
+      if (!loaded) return; // still on the loading or error view
+
+      const classes = classDays();
+      const list = onlyOpen ? base.filter((r) => !daysOf(r).includes(date)) : base;
+      $('count').textContent = list.length === records.length ? records.length + ' students' : list.length + ' of ' + records.length + ' students';
+      $('v-list').replaceChildren(...list.map((r) => row(r, classes.length, new Set(classes))));
+      if (list.length) return view('list');
+
+      const nobody = records.length === 0;
+      const allDone = onlyOpen && base.length > 0;
+      $('empty-ico').className = 'state-ico' + (allDone ? ' ok' : '');
+      $('empty-ico').firstChild.firstChild.setAttribute('href', allDone ? '#i-check-circle' : '#i-users');
+      $('empty-title').textContent = nobody ? 'No students yet' : allDone ? 'Everyone is marked' : 'No students match';
+      $('empty-text').textContent = nobody ? 'Add your first student to start taking attendance.'
+        : allDone ? 'Nobody is left to mark for this day.' : 'Try a different name or clear the filters.';
+      $('clear').hidden = nobody;
+      $('clear').textContent = allDone ? 'Show everyone' : 'Clear filters';
+      $('emptyAdd').hidden = !nobody;
+      view('empty');
+    }
+
+    function choose(d) { date = d; render(); }
+    function setOpen(on) {
+      onlyOpen = on;
+      $('open').setAttribute('aria-checked', String(on));
+      render();
+    }
+
+    // ---------- actions ----------
+    // Fills the section / subject pickers and the suggestion lists from the current records.
+    function refill() {
+      fill($('section'), 'All sections', records.map((r) => r.section));
+      fill($('subject'), 'All subjects', records.map((r) => r.subjectName));
+      $('sections').replaceChildren(...[...new Set(records.map((r) => r.section))].map((v) => new Option(v)));
+      $('subjects').replaceChildren(...[...new Set(records.map((r) => r.subjectName))].map((v) => new Option(v)));
+    }
+
+    async function load() {
+      $('refresh').disabled = true;
+      $('refresh').classList.add('spinning');
+      conn('loading', loaded ? 'Syncing…' : 'Connecting…');
+      if (!loaded) view('loading');
+      try {
+        const data = await api('GET', '');
+        if (!Array.isArray(data)) throw new Error('Unexpected reply from the server.');
+        records = data;
+        loaded = true;
+        refill();
+        conn('ok', 'Connected');
+      } catch (err) {
+        conn('error', 'Offline');
+        if (loaded) {
+          toast(err.message, 'bad');
+        } else {
+          $('error-text').textContent = err.message;
+          view('error');
+        }
+      }
+      $('refresh').disabled = false;
+      $('refresh').classList.remove('spinning');
+      render();
+    }
+
+    function mark(r, btn) {
+      const when = date;
+      return busy(btn, '', async () => {
+        try {
+          const updated = await api('PATCH', '?id=' + encodeURIComponent(r._id), { date: when });
+          records = records.map((x) => (x._id === r._id ? updated : x));
+          render();
+          toast(r.studentName + ' marked present for ' + pretty(when));
+          const el = $('v-list').querySelector('[data-id="' + CSS.escape(r._id) + '"]');
+          el?.classList.add('flash');
+          el?.querySelector('.go')?.classList.add('fresh');
+        } catch (err) {
+          fail(err);
+        }
+      });
+    }
+
+    // ---------- add-student drawer ----------
+    const drawer = $('drawer');
+    function note(text, kind) {
+      $('add-note').textContent = text;
+      $('add-note').className = 'noteb ' + kind;
+      $('add-note').hidden = false;
+    }
+    let editing = null; // the record being edited, or null when adding a new one
+
+    // One editable attendance date: a date box and a remove button.
+    function dateRow(value) {
+      const li = document.createElement('li');
+      li.className = 'dateitem';
+      const input = document.createElement('input');
+      input.type = 'date';
+      input.className = 'field';
+      input.required = true;
+      input.value = value || '';
+      input.setAttribute('aria-label', 'Attendance date');
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'roundbtn';
+      rm.setAttribute('aria-label', 'Remove this date');
+      rm.append(icon('trash'));
+      rm.addEventListener('click', () => li.remove());
+      li.append(input, rm);
+      return li;
+    }
+
+    // Opens the side panel: empty to add a student, or filled in to edit `r`.
+    function openForm(r) {
+      editing = r || null;
+      const f = $('add');
+      f.elements.studentName.value = r ? r.studentName : '';
+      f.elements.section.value = r ? r.section : '';
+      f.elements.subjectName.value = r ? r.subjectName : '';
+      const days = r ? [...new Set(daysOf(r))].sort() : date ? [date] : [];
+      $('dates').replaceChildren(...days.map(dateRow));
+      $('add-title').textContent = r ? 'Edit record' : 'Add a student';
+      $('add-sub').textContent = r
+        ? 'Fix a misspelled name, change the section or subject, or correct, remove or add attendance dates.'
+        : 'Add the student with the date they were present. Remove the date to add them without any attendance yet.';
+      $('add-submit-label').textContent = r ? 'Save changes' : 'Add student';
+      $('addCancel').textContent = r ? 'Cancel' : 'Done';
+      $('add-note').hidden = true;
+      drawer.showModal();
+    }
+    const openAdd = () => openForm(null);
+    $('addDate').addEventListener('click', () => {
+      const li = dateRow(date);
+      $('dates').append(li);
+      li.querySelector('input').focus();
+    });
+    $('addToggle').addEventListener('click', openAdd);
+    $('emptyAdd').addEventListener('click', openAdd);
+    $('fab').addEventListener('click', openAdd);
+    $('addCancel').addEventListener('click', () => drawer.close());
+    $('addClose').addEventListener('click', () => drawer.close());
+    drawer.addEventListener('click', (e) => { if (e.target === drawer) drawer.close(); }); // a click on the dimmed area closes it
+
+    // CREATE (POST) when adding, UPDATE (PUT) when editing. The dates list is sent as it stands,
+    // so a changed date is replaced and a removed date is dropped.
+    $('add').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const was = editing;
+      const body = {
+        ...Object.fromEntries(new FormData(form)),
+        attendanceDates: [...new Set([...$('dates').querySelectorAll('input')].map((i) => i.value).filter(Boolean))],
+      };
+      return busy(e.submitter || form.querySelector('[type=submit]'), was ? 'Saving…' : 'Adding…', async () => {
+        try {
+          if (was) {
+            const updated = await api('PUT', '?id=' + encodeURIComponent(was._id), body);
+            records = records.map((x) => (x._id === was._id ? updated : x));
+            drawer.close();
+            refill();
+            render();
+            toast('Saved changes to ' + updated.studentName);
+            $('v-list').querySelector('[data-id="' + CSS.escape(was._id) + '"]')?.classList.add('flash');
+          } else {
+            await api('POST', '', body);
+            form.elements.studentName.value = ''; // keep section + subject + dates: students are usually added in batches
+            note('Added ' + body.studentName.trim() + '. Add another, or press Done.', 'ok');
+            form.elements.studentName.focus();
+            load();
+          }
+        } catch (err) {
+          note(err.status === 401 ? 'That teacher key was not accepted. Close this panel and check “Teacher key”.' : err.message, 'bad');
+        }
+      });
+    });
+
+    // ---------- delete (always asks first) ----------
+    const confirmBox = $('confirm');
+    let toDelete = null;
+    function askDelete(r) {
+      toDelete = r;
+      $('c-text').textContent = r.studentName + ' (' + r.section + ' · ' + r.subjectName + ') and all of their attendance dates will be removed from the database. This can’t be undone.';
+      confirmBox.showModal();
+    }
+    $('c-cancel').addEventListener('click', () => confirmBox.close());
+    confirmBox.addEventListener('click', (e) => { if (e.target === confirmBox) confirmBox.close(); });
+    $('c-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const r = toDelete;
+      return busy($('c-ok'), 'Deleting…', async () => {
+        try {
+          await api('DELETE', '?id=' + encodeURIComponent(r._id));
+          records = records.filter((x) => x._id !== r._id);
+          confirmBox.close();
+          refill();
+          render();
+          toast('Deleted ' + r.studentName);
+        } catch (err) {
+          confirmBox.close();
+          fail(err);
+        }
+      });
+    });
+
+    // ---------- controls ----------
+    $('refresh').addEventListener('click', () => load());
+    $('retry').addEventListener('click', (e) => busy(e.currentTarget, 'Retrying…', () => load()));
+    $('clear').addEventListener('click', () => {
+      $('q').value = '';
+      $('section').value = '';
+      $('subject').value = '';
+      setOpen(false);
+      $('q').focus();
+    });
+    $('open').addEventListener('click', () => setOpen(!onlyOpen));
+    $('left-btn').addEventListener('click', () => {
+      setOpen(true);
+      $('open').scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
+    $('pickbtn').addEventListener('click', () => {
+      try { $('picker').showPicker(); } catch (e) { $('picker').focus(); $('picker').click(); }
+    });
+    $('picker').addEventListener('change', () => { if ($('picker').value) choose($('picker').value); });
+    ['q', 'section', 'subject'].forEach((id) => $(id).addEventListener('input', render));
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeKey();
+      const typing = /^(input|textarea|select)$/i.test(e.target.tagName);
+      if (e.key === '/' && !typing && !drawer.open) { e.preventDefault(); $('q').focus(); }
+    });
+
+    date = today();
+    render();
+    load();
+  </script>
+</body>
+</html>
