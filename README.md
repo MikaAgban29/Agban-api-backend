@@ -5,7 +5,7 @@ list, fix a misspelled name or a wrong date, and delete wrong or duplicate recor
 
 - **Page:** `public/index.html` (plain HTML, CSS and JavaScript, no build step)
 - **API:** `api/index.js`, a Vercel serverless function at `/api`
-- **Database:** MongoDB Atlas, database `LabAttendanceDB_Agban`, collection `daily_attendance`
+- **Database:** MongoDB Atlas, database `LabAttendanceDB`, collection `daily_attendance`
   (the name is set in `db.js`, so it does not depend on what the connection string contains)
 
 Live site: https://agban-api-backend.vercel.app/
@@ -42,6 +42,10 @@ All routes are at `/api`. Records look like this:
 Errors: `400` bad input, `401` wrong or missing key, `404` no such record, `409` the same student is already
 listed for that section and subject, `503` the server has no `WRITE_KEY`.
 
+## How it is stored
+
+In MongoDB each student is one document in `daily_attendance`: `{ studentName, section, subjectName, attendance: [{ date }] }`, with one `{ date }` for every day the student was present. The API turns that list into `attendanceDates` for the page, and back again when it saves.
+
 ## Security
 
 - The MongoDB connection string exists only as the Vercel environment variable `MONGODB_URI`. It is never in
@@ -57,7 +61,7 @@ listed for that section and subject, `503` the server has no `WRITE_KEY`.
 1. Push this repo to GitHub.
 2. In Vercel choose **Add New, Project** and import the repo. No build command is needed.
 3. Under **Settings, Environment Variables** add `MONGODB_URI` (the Atlas connection string `mongodb+srv://…`
-   for a database user that can read and write `LabAttendanceDB_Agban`) and `WRITE_KEY` (a password of
+   for a database user that can read and write `LabAttendanceDB`) and `WRITE_KEY` (a password of
    your choice). Redeploy afterwards.
 4. In Atlas, **Network Access** must allow Vercel. Its addresses change, so a class project usually allows
    `0.0.0.0/0`.

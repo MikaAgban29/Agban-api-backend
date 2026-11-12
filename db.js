@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 // A connection string with no "/<database>" part silently falls back to the "test" database,
 // which is why the API used to miss the attendance data. Naming the database here prevents that.
-const DB_NAME = 'LabAttendanceDB_Agban';
+const DB_NAME = 'LabAttendanceDB';
 
 let cached = global.mongoose;
 if (!cached) {
