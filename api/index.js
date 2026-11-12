@@ -1,12 +1,15 @@
 const mongoose = require('mongoose');
 const connectToDatabase = require('../db');
 
+// The class database keeps each student's days as a list of { date } objects: attendance: [{ date }].
+const day = new mongoose.Schema({ date: Date }, { _id: false });
+
 const schema = new mongoose.Schema(
   {
     studentName: { type: String, required: true, trim: true, maxlength: 100 },
     section: { type: String, required: true, trim: true, maxlength: 50 },
     subjectName: { type: String, required: true, trim: true, maxlength: 100 },
-    attendanceDates: [Date],
+    attendance: [day],
   },
   { versionKey: false } // the existing documents have no __v
 );
@@ -14,6 +17,11 @@ const schema = new mongoose.Schema(
 // The 3rd argument pins the collection; without it Mongoose would use "attendances".
 const Attendance =
   mongoose.models.Attendance || mongoose.model('Attendance', schema, 'daily_attendance');
+
+// The page and the API talk about plain days (attendanceDates: ["2026-10-08", ...]);
+// the database stores them as { date } objects, so these two functions convert in each direction.
+const toApi = ({ attendance, ...rest }) => ({ ...rest, attendanceDates: (attendance || []).map((a) => a.date) });
+const toStored = (days) => days.map((date) => ({ date }));
 
 // Dates are stored as UTC midnight, like the existing documents. Rejects "2026-02-30".
 function toDay(s) {
@@ -73,7 +81,7 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') {
       // shortcut: no pagination, fine for a class roster; add limit/skip past a few thousand rows.
       const rows = await Attendance.find().sort({ section: 1, studentName: 1 }).lean();
-      return res.status(200).json(rows);
+      return res.status(200).json(rows.map(toApi));
     }
 
     // CREATE: { studentName, section, subjectName, attendanceDates?: ["YYYY-MM-DD", ...] }
@@ -82,23 +90,23 @@ module.exports = async (req, res) => {
       const days = toDays(body.attendanceDates);
       if (days === null) return res.status(400).json({ error: DAYS_ERROR });
       if (await Attendance.exists(fields)) return res.status(409).json({ error: DUPLICATE });
-      const doc = new Attendance({ ...fields, attendanceDates: days || [] });
+      const doc = new Attendance({ ...fields, attendance: toStored(days || []) });
       await doc.save();
-      return res.status(201).json(doc);
+      return res.status(201).json(toApi(doc.toObject()));
     }
 
     // UPDATE (one day): PATCH /api?id=<_id> with { "date": "YYYY-MM-DD" } marks the student present that day.
     if (req.method === 'PATCH') {
-      const day = toDay(body.date);
-      if (!day || !mongoose.isObjectIdOrHexString(id)) {
+      const date = toDay(body.date);
+      if (!date || !mongoose.isObjectIdOrHexString(id)) {
         return res.status(400).json({ error: 'Need ?id=<student id> and a date like 2026-10-08' });
       }
       const updated = await Attendance.findByIdAndUpdate(
         id,
-        { $addToSet: { attendanceDates: day } },
+        { $addToSet: { attendance: { date } } },
         { returnDocument: 'after' }
       ).lean();
-      return updated ? res.status(200).json(updated) : res.status(404).json({ error: NOT_FOUND });
+      return updated ? res.status(200).json(toApi(updated)) : res.status(404).json({ error: NOT_FOUND });
     }
 
     // PUT and DELETE work on one existing student: ?id=<_id>
@@ -115,10 +123,10 @@ module.exports = async (req, res) => {
       if (await Attendance.exists({ ...fields, _id: { $ne: id } })) return res.status(409).json({ error: DUPLICATE });
       const updated = await Attendance.findByIdAndUpdate(
         id,
-        { $set: days ? { ...fields, attendanceDates: days } : fields },
+        { $set: days ? { ...fields, attendance: toStored(days) } : fields },
         { returnDocument: 'after' }
       ).lean();
-      return updated ? res.status(200).json(updated) : res.status(404).json({ error: NOT_FOUND });
+      return updated ? res.status(200).json(toApi(updated)) : res.status(404).json({ error: NOT_FOUND });
     }
 
     // DELETE: DELETE /api?id=<_id> removes the student and all their attendance dates.
