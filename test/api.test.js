@@ -33,7 +33,14 @@ test('uses the daily_attendance collection', () => {
 test('READ: GET lists records without a key', async () => {
   Attendance.find = () => ({ sort: () => ({ lean: async () => [{ studentName: 'A' }] }) });
   const r = await call({});
-  assert.deepStrictEqual([r.status, r.body], [200, [{ studentName: 'A' }]]);
+  assert.deepStrictEqual([r.status, r.body], [200, [{ studentName: 'A', attendanceDates: [] }]]);
+});
+
+test('READ: the stored { date } objects come back as attendanceDates', async () => {
+  const stored = new Date('2026-10-08T00:00:00.000Z');
+  Attendance.find = () => ({ sort: () => ({ lean: async () => [{ studentName: 'A', attendance: [{ date: stored }] }] }) });
+  const r = await call({});
+  assert.deepStrictEqual(r.body, [{ studentName: 'A', attendanceDates: [stored] }]);
 });
 
 test('writes need the key, and are off when WRITE_KEY is unset', async () => {
@@ -83,7 +90,7 @@ test('UPDATE: PATCH marks a valid day as UTC midnight and rejects bad input', as
 
   const ok = await call({ method: 'PATCH', headers: keyed, query: { id }, body: { date: '2026-10-08' } });
   assert.strictEqual(ok.status, 200);
-  assert.strictEqual(update.$addToSet.attendanceDates.toISOString(), '2026-10-08T00:00:00.000Z');
+  assert.strictEqual(update.$addToSet.attendance.date.toISOString(), '2026-10-08T00:00:00.000Z');
 
   for (const [q, date] of [[{ id }, '2026-02-30'], [{ id }, 'today'], [{ id: 'nope' }, '2026-10-08']]) {
     assert.strictEqual((await call({ method: 'PATCH', headers: keyed, query: q, body: { date } })).status, 400);
@@ -108,11 +115,11 @@ test('UPDATE: PUT fixes the name, section and subject and can replace the dates'
   // dates sent: they replace the old list (changed, removed or added days)
   r = await call({ method: 'PUT', headers: keyed, query: { id }, body: { ...student, attendanceDates: ['2026-10-22', '2026-10-08'] } });
   assert.strictEqual(r.status, 200);
-  assert.deepStrictEqual(args.update.$set.attendanceDates.map(iso), ['2026-10-08T00:00:00.000Z', '2026-10-22T00:00:00.000Z']);
+  assert.deepStrictEqual(args.update.$set.attendance.map((a) => iso(a.date)), ['2026-10-08T00:00:00.000Z', '2026-10-22T00:00:00.000Z']);
 
   // an empty list clears every date
   r = await call({ method: 'PUT', headers: keyed, query: { id }, body: { ...student, attendanceDates: [] } });
-  assert.deepStrictEqual(args.update.$set.attendanceDates, []);
+  assert.deepStrictEqual(args.update.$set.attendance, []);
 });
 
 test('UPDATE: PUT rejects bad input, duplicates and unknown students', async () => {
